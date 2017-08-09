@@ -1,0 +1,5 @@
+{
+    "require": {
+        "chobie/jira-api-restclient": "^2.0@dev"
+    }
+}
