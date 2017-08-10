@@ -110,7 +110,8 @@ function getTicketData($issue) {
         'reporter'    => $xIssue->get('reporter')['displayName'],
         'title'       => $xIssue->get('summary'),
         'created'     => preg_replace("/^([^T]+)T.*/", "$1", $xIssue->get('created')),
-        'description' => $xIssue->get('description'),
+        'resdate'     => preg_replace("/^([^T]+)T.*/", "$1", $xIssue->get('resolutiondate')),
+        'description' => strtr($xIssue->get('description'), ["\r" =>""]),
         'links'       => array(),
         'comments'    => array(),
     );    
@@ -138,7 +139,7 @@ function getTicketData($issue) {
     foreach($commentBlock['comments'] as $c) {    // grab author.displayName, body, updated
         array_push($TData['comments'], array(
             'author' => $c['author']['displayName'],
-            'title'  => $c['body'],
+            'title'  => strtr($c['body'], ["\r" => ""]),
             'time'   => preg_replace("/^([^T]+)T.*/", "$1", $c['updated']),
         )
         );
@@ -149,9 +150,9 @@ function getTicketData($issue) {
 function printIssue($fp, $ticket, $fullData) {
 
     fprintf($fp, "%-14s%s\n", $ticket['issue'], $ticket['title']);
-    fprintf($fp, "%-14s%-12s%s\n", $ticket['type'], $ticket['priority'], $ticket['resolution']);
+    fprintf($fp, "%-14s%-18s%s\n", $ticket['type'], $ticket['priority'], $ticket['resolution']);
     if($fullData) {
-        fprintf($fp, "%-14s%s\n\n%s\n\n", $ticket['created'], $ticket['assignee'], $ticket['description']);
+        fprintf($fp, "%-14s%-18s%s\n\n%s\n\n", $ticket['created'], $ticket['assignee'], $ticket['resdate'], $ticket['description']);
         if(count($ticket['links']) > 0) {
             fprintf($fp, "Aiheeseen liittyvät tiketit:\n");
         }
