@@ -26,46 +26,81 @@ use chobie\Jira\Issues\Walker;
 require_once 'vendor/autoload.php';
 
 $cfFile =     'alliharvester.ini';
-$reportName = 'Finna-release-summary-' . date("Ymd-Hi") . '.txt';
-/*****************************************
-if(count($argv) != 3 && count($argv) != 5) {
-  usage();
-  exit(0);
-}
-
+$reportPrefix = 'Finna-release-summary';
+$project = 'Finna';
+$reportName = '';
 
 function usage() {
   global $argv;
-  echo "usage: $argv[0] [-cf configfile] 1H|2H|ALL year\n";
-  echo "       generate finna ticket statistics for either half, or the whole of a given year\n";
+  echo "usage: $argv[0] [-cf configfile] [-p project] [-o outputfile]\n";
+  echo "       Retrieve Finna development ticket data for the next release\n";
 }
-*****************************************/
+
+$options = getopt("c:p:o:");
+
+if($options === FALSE) {
+    usage();
+    exit(1);
+}
+
+if(isset($options['c'])) {
+    $cfFile = $options['c'];
+}
+if(isset($options['p'])) {
+    $project = $options['p'];
+}
+if(isset($options['o'])) {
+    $reportName = $options['o'];
+}
+
 try {
     $ini_array = parse_ini_file($cfFile, TRUE);
 }	   
 catch(Throwable $t) {
     echo "Failed to read configuration file \"$cfFile\":";
     echo $t->getMessage();
-    exit(3);
+    exit(1);
 }
 catch(Exception $e) {
     echo "Failed to read configuration file \"$cfFile\":";
     echo $t->getMessage();
-    exit(3);
+    exit(1);
 }
 
 if(array_key_exists('jira', $ini_array)) {
-  $host = $ini_array['jira']['host'];
-  $username = $ini_array['jira']['username'];
-  $password = $ini_array['jira']['password'];
-  $jql = $ini_array['jira']['jql'];
+    $host = $ini_array['jira']['host'];			// verify these are not missing
+    $username = $ini_array['jira']['username'];
+    $password = $ini_array['jira']['password'];
+    if($host == NULL || $username == NULL) {
+        echo "$argv[0]: missing host or username definition in stanza '[jira]', configuration file '$cfFile'.\n";
+        echo "          Please review the file; password value may be empty.\n";
+        exit(1);
+    }
 }
 else {
-  echo "$argv[0]: Cannot find stanza '[jira]' in configuration file '$cfFile' - aborting...\n";
+    echo "$argv[0]: Cannot find stanza '[jira]' in configuration file '$cfFile' - aborting...\n";
+    exit(3);
+}
+if(array_key_exists($project, $ini_array)) {
+    if(isset($ini_array[$project]['jql'])) {
+        $jql = $ini_array[$project]['jql'];
+    }
+    else {
+        echo "$argv[0]: Query definition (parameter 'jql') not found for [$project] in configuration file '$cfFile' - aborting...\n";
+        exit(3);
+    }
+    if(isset($ini_array[$project]['outputPrefix'])) {
+        $reportPrefix =  $ini_array[$project]['outputPrefix'];
+    }
+}
+else {
+  echo "$argv[0]: Cannot find stanza '[$project]' in configuration file '$cfFile' - aborting...\n";
   exit(3);
 }
 
-
+if($reportName == '') {
+    $reportName =  sprintf("%s-%s.txt", $reportPrefix, date("Ymd-Hi"));
+}
 
 /*
  *  Select tickets (this goes to alliharvester.ini) that have
@@ -95,7 +130,7 @@ function getTicketData($issue) {
     $key = $issue->getKey();
     $res = $api->getIssue($key, 'comment');
     if(!$res) {
-        return FALSE;
+        return FALSE;	// need proper error handling
     }
     //echo var_dump($res); 
     $xIssue = new Issue($res->getResult());  // error handling missing...
@@ -176,7 +211,20 @@ if($password == '') {
   // echo "got \"$password\"\n";
 }
 
-$api = new Api($host, new Basic($username, $password));
+try {
+    $api = new Api($host, new Basic($username, $password));
+}
+catch(Throwable $t) {
+    echo "Failed to connect to JIRA at \"$host\":";
+    echo $t->getMessage();
+    exit(2);
+}
+catch(Exception $e) {
+    echo "Failed to connect to JIRA at \"$host\":";
+    echo $t->getMessage();
+    exit(2);
+}
+
 $walker = new Walker($api);
 $walker->push($jql);
 
