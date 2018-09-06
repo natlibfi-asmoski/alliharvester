@@ -3,7 +3,7 @@
 /*
  *  This file is part of Alliharvester
  *
- *  Jira-SLA is free software: you can redistribute it and/or modify
+ *  Alliharvester is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
@@ -33,7 +33,9 @@ $reportName = '';
 function usage() {
   global $argv;
   echo "usage: $argv[0] [-cf configfile] [-p project] [-o outputfile]\n";
-  echo "       Retrieve Finna development ticket data for the next release\n";
+  echo "       Retrieve Finna development ticket data for the next release from JIRA.\n";
+  echo "       The project parameter selects a stanza in the config file,\n";
+  echo "       default value is 'Finna'.  Default config file is 'alliharvester.ini'.\n";
 }
 
 $options = getopt("c:p:o:");
@@ -133,7 +135,7 @@ function getTicketData($issue) {
         return FALSE;	// need proper error handling
     }
     //echo var_dump($res); 
-    $xIssue = new Issue($res->getResult());  // error handling missing...
+    $xIssue = new Issue($res->getResult());  // could this call fail for some reason?
 
     $TData = array(
         'issue'       => $key,
@@ -199,7 +201,7 @@ function printIssue($fp, $ticket, $fullData) {
             fprintf($fp, "%s (%s): %s\n\n", $c['author'], $c['time'], $c['title']);
         }
     }
-    fprintf($fp, "\n\n");
+    fprintf($fp, "\n-----------------------------------------------------\n\n");
 }
 
 if($password == '') {
@@ -211,8 +213,11 @@ if($password == '') {
   // echo "got \"$password\"\n";
 }
 
-try {
+// one of these operations will eventually try to connect to JIRA -- not!
+try {	
     $api = new Api($host, new Basic($username, $password));
+    $walker = new Walker($api);
+    $walker->push($jql);
 }
 catch(Throwable $t) {
     echo "Failed to connect to JIRA at \"$host\":";
@@ -224,9 +229,6 @@ catch(Exception $e) {
     echo $t->getMessage();
     exit(2);
 }
-
-$walker = new Walker($api);
-$walker->push($jql);
 
 $resolutions = [
     "Fixed" => 'fixes',
@@ -282,7 +284,7 @@ foreach ( $walker as $issue ) {
         $r = $resolutions[$r];
     }
     if($r != 'skip') {
-        if($r != 'noop') {
+        if($r != 'noop' && $r != 'weird') {
             $r = $iCat[$tmp['type']];  // use issue type instead of done/fixed
         }
         array_push($issues[$r], $tmp);
