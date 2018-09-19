@@ -252,6 +252,9 @@ $iCat = [
     'Improvement' => 'done',
     'Bug' => 'fixes',
     'Feature Request' => 'done',
+    'Task' => 'done',			# the last three issue types are used in Aski but won't do any harm with Finna stuff
+    'Sub-task' => 'done',
+    'Problem' => 'fixes',
 ];
 
 $issues = [
