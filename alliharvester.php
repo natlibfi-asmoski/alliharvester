@@ -128,7 +128,7 @@ if($reportName == '') {
  */
 function getTicketData($issue) {
     global $api;
-    
+    $asg = '';   
     $key = $issue->getKey();
     $res = $api->getIssue($key, 'comment');
     if(!$res) {
@@ -142,7 +142,7 @@ function getTicketData($issue) {
         'priority'    => $xIssue->get('priority')['name'],  // getPriority() etc won't work...?!?
         'type'        => $xIssue->get('issuetype')['name'],
         'resolution'  => $xIssue->get('resolution')['name'],
-        'assignee'    => $xIssue->get('assignee')['displayName'],
+        'assignee'    => ($asg = $xIssue->get('assignee')) == NULL ? '' : $asg['displayName'],
         'creator'     => $xIssue->get('creator')['displayName'],
         'reporter'    => $xIssue->get('reporter')['displayName'],
         'title'       => $xIssue->get('summary'),
@@ -249,6 +249,9 @@ $resolutions = [
 ];
 
 $iCat = [
+    'Story' => 'done',
+    'Feature' => 'done',
+    'Epic' => 'done',
     'Improvement' => 'done',
     'Bug' => 'fixes',
     'Feature Request' => 'done',
