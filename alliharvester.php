@@ -141,7 +141,11 @@ function getTicketData($issue) {
         'issue'       => $key,
         'priority'    => $xIssue->get('priority')['name'],  // getPriority() etc won't work...?!?
         'type'        => $xIssue->get('issuetype')['name'],
-        'resolution'  => $xIssue->get('resolution')['name'],
+	'resolution'  => ($tmp = $xIssue->get('resolution')) === NULL ? 'UNDEFINED' : $tmp['name'],
+	//'epic'	      => $xIssue->get('customfield_10224'), // 'Epic Name'
+	'epic'	      => $xIssue->get('customfield_10223'), // 'Epic Link', palauttaa stringin
+	'component'   => array_key_exists(0, ($tmp = $xIssue->get('components'))) ? $tmp[0]['name'] : '',
+	'relNote'     => $xIssue->get('customfield_13120'), // 'Kuvaus julkaisumuistioon'
         'assignee'    => ($asg = $xIssue->get('assignee')) == NULL ? '' : $asg['displayName'],
         'creator'     => $xIssue->get('creator')['displayName'],
         'reporter'    => $xIssue->get('reporter')['displayName'],
@@ -151,6 +155,7 @@ function getTicketData($issue) {
         'description' => strtr($xIssue->get('description'), ["\r" =>""]),
         'links'       => array(),
         'comments'    => array(),
+	'theme'	      => '',
     );    
     $linkList = $xIssue->get('issuelinks');
     // outwardIssue.key
@@ -167,8 +172,14 @@ function getTicketData($issue) {
                 'type'     => $lnk['outwardIssue']['fields']['issuetype']['name'],
                 'priority' => $lnk['outwardIssue']['fields']['priority']['name'],
             ]
-            );
+	    );
         }
+    }
+    $themeList = $xIssue->get('customfield_13021');
+    if($themeList !== NULL) {
+        foreach($themeList as $theme) {
+	    $TData['theme'] .= $theme['value'] ." ";
+	}
     }
     
     $commentBlock = $xIssue->get('comment');
@@ -189,7 +200,10 @@ function printIssue($fp, $ticket, $fullData) {
     fprintf($fp, "%-14s%s\n", $ticket['issue'], $ticket['title']);
     fprintf($fp, "%-14s%-18s%s\n", $ticket['type'], $ticket['priority'], $ticket['resolution']);
     if($fullData) {
-        fprintf($fp, "%-14s%-18s%s\n\n%s\n\n", $ticket['created'], $ticket['assignee'], $ticket['resdate'], $ticket['description']);
+	    fprintf($fp, "%-14s%-18s%s\nComponent: %s\nTheme: %s\nEpic: %s\nRelease Note: %s\n\n%s\n\n",
+		    $ticket['created'], $ticket['assignee'], $ticket['resdate'],
+		    $ticket['component'], $ticket['theme'], $ticket['epic'], 
+		    $ticket['relNote'], $ticket['description']);
         if(count($ticket['links']) > 0) {
             fprintf($fp, "Aiheeseen liittyvät tiketit:\n");
         }
@@ -283,7 +297,7 @@ foreach ( $walker as $issue ) {
     $tmp = getTicketData($issue);
     $r = $tmp['resolution'];
     if(!isset($resolutions[$r])) {
-        echo "unexpected resolution for issue ", $tmp['issue'], ", please check: \"$r\"";
+        echo "unexpected resolution for issue ", $tmp['issue'], ", please check: \"$r\"\n";
         $r = 'weird';
     }
     else {
