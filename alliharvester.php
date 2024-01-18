@@ -29,16 +29,17 @@ $cfFile =     'alliharvester.ini';
 $reportPrefix = 'Finna-release-summary';
 $project = 'Finna';
 $reportName = '';
+$fixVersion = '';
 
 function usage() {
   global $argv;
-  echo "usage: $argv[0] [-cf configfile] [-p project] [-o outputfile]\n";
+  echo "usage: $argv[0] [-cf configfile] [-p project] [-o outputfile] [-v fixVersion]\n";
   echo "       Retrieve Finna development ticket data for the next release from JIRA.\n";
   echo "       The project parameter selects a stanza in the config file,\n";
   echo "       default value is 'Finna'.  Default config file is 'alliharvester.ini'.\n";
 }
 
-$options = getopt("c:p:o:");
+$options = getopt("c:p:o:v:");
 
 if($options === FALSE) {
     usage();
@@ -53,6 +54,9 @@ if(isset($options['p'])) {
 }
 if(isset($options['o'])) {
     $reportName = $options['o'];
+}
+if(isset($options['v'])) {
+    $fixVersion = $options['v'];
 }
 
 try {
@@ -85,7 +89,9 @@ else {
 }
 if(array_key_exists($project, $ini_array)) {
     if(isset($ini_array[$project]['jql'])) {
-        $jql = $ini_array[$project]['jql'];
+	    $jql = $ini_array[$project]['jql'] . " AND (fixVersion " . ($fixVersion == '' ? 'is empty' : "='$fixVersion'") .
+		    ") ORDER BY KEY";
+	    #echo "jql =\"$jql\"\n";
     }
     else {
         echo "$argv[0]: Query definition (parameter 'jql') not found for [$project] in configuration file '$cfFile' - aborting...\n";
